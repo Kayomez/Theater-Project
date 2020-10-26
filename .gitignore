@@ -20,7 +20,7 @@ trace/
 *trace.json
 *.0x
 
-config.json 
+config.json
 #Should probably be re-added
 #Or at least provide documentation on how to populate
 
@@ -33,6 +33,8 @@ config.json
 .githooks/
 .guides/
 .codio
+.idea/
 
 setup.sh
 .settings
+package-lock.json

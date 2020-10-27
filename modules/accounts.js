@@ -38,39 +38,34 @@ class Accounts {
 				throw new Error('missing field')
 			}
 		})
-		let sql = `SELECT COUNT(id) as records FROM users WHERE user="${user}";`
-		const data = await this.db.get(sql)
-		if (data.records !== 0) {
+		const data = await this.db.get('SELECT count(*) as count FROM users WHERE user = ?;', user)
+		if (data.count !== 0) {
 			throw new Error(`username "${user}" already in use`)
 		}
-		sql = `SELECT COUNT(id) as records FROM users WHERE email="${email}";`
-		const emails = await this.db.get(sql)
-		if (emails.records !== 0) {
+		const emails = await this.db.get('SELECT count(*) as count FROM users WHERE email = ?;', email)
+		if (emails.count !== 0) {
 			throw new Error(`email address "${email}" is already in use`)
 		}
 		pass = await bcrypt.hash(pass, saltRounds)
-		sql = `INSERT INTO users(user, pass, email) VALUES("${user}", "${pass}", "${email}")`
-		await this.db.run(sql)
+		await this.db.run('INSERT INTO users(user, pass, email) VALUES(?, ?, ?);', user, pass, email)
 		return true
 	}
 
 	/**
 	 * checks to see if a set of login credentials are valid
-	 * @param {String} username the username to check
+	 * @param {String} user the username to check
 	 * @param {String} password the password to check
 	 * @returns {Boolean} returns true if credentials are valid
 	 */
-	async login(username, password) {
-		let sql = `SELECT count(id) AS count FROM users WHERE user="${username}";`
-		const records = await this.db.get(sql)
+	async login(user, password) {
+		const records = await this.db.get('SELECT count(*) AS count FROM users WHERE user = ?;', user)
 		if (!records.count) {
-			throw new Error(`username "${username}" not found`)
+			throw new Error(`username "${user}" not found`)
 		}
-		sql = `SELECT pass FROM users WHERE user = "${username}";`
-		const record = await this.db.get(sql)
+		const record = await this.db.get('SELECT pass FROM users WHERE user = ?;', user)
 		const valid = await bcrypt.compare(password, record.pass)
 		if (valid === false) {
-			throw new Error(`invalid password for account "${username}"`)
+			throw new Error(`invalid password for account "${user}"`)
 		}
 		return true
 	}

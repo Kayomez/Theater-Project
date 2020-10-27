@@ -1,4 +1,3 @@
-
 import Koa from 'koa'
 import serve from 'koa-static'
 import views from 'koa-views'
@@ -15,15 +14,17 @@ const port = process.env.PORT || defaultPort
 async function getHandlebarData(ctx, next) {
 	console.log(`${ctx.method} ${ctx.path}`)
 	ctx.hbs = {
-		authorised: ctx.session.authorised
+		authorised: ctx.session.authorised,
 	}
-	for(const key in ctx.query) ctx.hbs[key] = ctx.query[key]
+	for (const key in ctx.query) {
+		ctx.hbs[key] = ctx.query[key]
+	}
 	await next()
 }
 
 app.use(serve('public'))
 app.use(session(app))
-app.use(views('views', { extension: 'handlebars' }, {map: { handlebars: 'handlebars' }}))
+app.use(views('views', {extension: 'handlebars'}, {map: {handlebars: 'handlebars'}}))
 
 app.use(getHandlebarData)
 

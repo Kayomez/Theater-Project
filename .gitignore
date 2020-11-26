@@ -37,4 +37,4 @@ config.json
 
 setup.sh
 .settings
-package-lock.json
+#package-lock.json

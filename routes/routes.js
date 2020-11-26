@@ -1,8 +1,7 @@
-
 import Router from 'koa-router'
 
 import publicRouter from './public.js'
-import secureRouter from'./secure.js'
+import secureRouter from './secure.js'
 
 const mainRouter = new Router()
 

@@ -24,7 +24,7 @@ async function getHandlebarData(ctx, next) {
 
 app.use(serve('public'))
 app.use(session(app))
-app.use(views('views', {extension: 'handlebars'}, {map: {handlebars: 'handlebars'}}))
+app.use(views('views', {extension: 'handlebars', map: {handlebars: 'handlebars'}}))
 
 app.use(getHandlebarData)
 

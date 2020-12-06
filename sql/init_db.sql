@@ -1,7 +1,6 @@
 CREATE TABLE IF NOT EXISTS users (
-    userID INTEGER PRIMARY KEY AUTOINCREMENT,
-    userName TEXT NOT NULL,
-    email TEXT NOT NULL,
+    userName TEXT PRIMARY KEY NOT NULL,
+    email TEXT UNIQUE NOT NULL,
     cryptoPass TEXT NOT NULL
 );
 

@@ -1,9 +1,10 @@
 import test from 'ava'
-import Accounts from '../modules/accounts.js'
+import {Accounts} from '../modules/accounts.js'
+import {errors} from '../modules/repository-sqlite.js'
 
 test('REGISTER : register and log in with a valid account', async test => {
 	test.plan(1)
-	const account = await new Accounts() // no database specified so runs in-memory
+	const account = new Accounts() // no database specified so runs in-memory
 	try {
 		await account.register('doej', 'password', 'doej@gmail.com')
 		const login = await account.login('doej', 'password')
@@ -17,13 +18,13 @@ test('REGISTER : register and log in with a valid account', async test => {
 
 test('REGISTER : register a duplicate username', async test => {
 	test.plan(1)
-	const account = await new Accounts()
+	const account = new Accounts()
 	try {
 		await account.register('doej', 'password', 'doej@gmail.com')
-		await account.register('doej', 'password', 'doej@gmail.com')
+		await account.register('doej', 'password', 'doej2@gmail.com')
 		test.fail('error not thrown')
 	} catch (err) {
-		test.is(err.message, 'username "doej" already in use', 'incorrect error message')
+		test.is(err.message, errors.USERNAME_EXISTS, 'incorrect error message')
 	} finally {
 		account.close()
 	}
@@ -31,7 +32,7 @@ test('REGISTER : register a duplicate username', async test => {
 
 test('REGISTER : error if blank username', async test => {
 	test.plan(1)
-	const account = await new Accounts()
+	const account = new Accounts()
 	try {
 		await account.register('', 'password', 'doej@gmail.com')
 		test.fail('error not thrown')
@@ -44,7 +45,7 @@ test('REGISTER : error if blank username', async test => {
 
 test('REGISTER : error if blank password', async test => {
 	test.plan(1)
-	const account = await new Accounts()
+	const account = new Accounts()
 	try {
 		await account.register('doej', '', 'doej@gmail.com')
 		test.fail('error not thrown')
@@ -57,7 +58,7 @@ test('REGISTER : error if blank password', async test => {
 
 test('REGISTER : error if blank email', async test => {
 	test.plan(1)
-	const account = await new Accounts()
+	const account = new Accounts()
 	try {
 		await account.register('doej', 'password', '')
 		test.fail('error not thrown')
@@ -70,13 +71,13 @@ test('REGISTER : error if blank email', async test => {
 
 test('REGISTER : error if duplicate email', async test => {
 	test.plan(1)
-	const account = await new Accounts()
+	const account = new Accounts()
 	try {
 		await account.register('doej', 'password', 'doej@gmail.com')
 		await account.register('bloggsj', 'newpassword', 'doej@gmail.com')
 		test.fail('error not thrown')
 	} catch (err) {
-		test.is(err.message, 'email address "doej@gmail.com" is already in use', 'incorrect error message')
+		test.is(err.message, errors.EMAIL_EXISTS, 'incorrect error message')
 	} finally {
 		account.close()
 	}
@@ -84,7 +85,7 @@ test('REGISTER : error if duplicate email', async test => {
 
 test('LOGIN    : invalid username', async test => {
 	test.plan(1)
-	const account = await new Accounts()
+	const account = new Accounts()
 	try {
 		await account.register('doej', 'password', 'doej@gmail.com')
 		await account.login('roej', 'password')
@@ -98,7 +99,7 @@ test('LOGIN    : invalid username', async test => {
 
 test('LOGIN    : invalid password', async test => {
 	test.plan(1)
-	const account = await new Accounts()
+	const account = new Accounts()
 	try {
 		await account.register('doej', 'password', 'doej@gmail.com')
 		await account.login('doej', 'bad')

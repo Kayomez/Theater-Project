@@ -4,7 +4,18 @@ import fs from 'fs'
 export const errors = {
 	USERNAME_EXISTS: 'username already exists',
 	EMAIL_EXISTS: 'email already in use',
-	UNKNOWN_ERROR: 'an unknown error occurred, try again'
+	UNKNOWN_ERROR: 'an unknown error occurred, try again',
+}
+
+function getErrString(err) {
+	if (err.message.includes('email')) {
+		return errors.EMAIL_EXISTS
+	} else if (err.message.includes('userName')) {
+		return errors.USERNAME_EXISTS
+	} else {
+		console.log(err.message)
+		return errors.UNKNOWN_ERROR
+	}
 }
 
 export class User {
@@ -16,39 +27,57 @@ export class User {
 }
 
 export class SQLiteRepo {
-	/**
-	 * Create a new repo instance containing the passed database
-	 * @param dbName {string} the path to the database being opened
-	 * @returns {Promise<SQLiteRepo>} a promise resolving as the opened and initialised database.
-	 */
-	static async open(dbName = ':memory:') {
-		const repo = new SQLiteRepo()
-		await repo.init(dbName)
-		return repo
+
+	constructor(dbName = ':memory:') {
+		if (dbName !== ':memory:') { // don't share in-memory databases for testing purposes
+			if (SQLiteRepo.instances[dbName] !== undefined) { // instance already exists, increment users and return
+				SQLiteRepo.instances[dbName].count += 1
+				return SQLiteRepo.instances[dbName].instance
+			}
+			SQLiteRepo.instances[dbName] = { // new database, store instance
+				count: 1,
+				instance: this,
+			}
+		}
+
+		this.name = dbName
+		// store db as promise, removes convoluted async constructor but requires await or promise methods to use db.
+		this.db = sqlite.open(dbName)
+			.then(async db => { // run setup script then return the db, guarantees db is initialised before use
+				const sql = fs.readFileSync('./sql/init_db.sql', 'utf8')
+				await db.run(sql)
+				return db
+			})
+
+		return this
 	}
 
-	/**
-	 * open and initialise the passed database. will close the currently open database (if any)
-	 * @param dbName {string} the name of the database to open
-	 * @returns {Promise<void>}
-	 */
-	async init(dbName = ':memory:') {
-		if (this.db !== undefined) {
-			this.close()
+	/** close the database handle */
+	close() {
+		if (SQLiteRepo.instances[this.name] !== undefined) { // if instance shared de-increment users
+			SQLiteRepo.instances[this.name].count -= 1
+			if (SQLiteRepo.instances[this.name].count <= 0) { // no remaining users so can safely close
+				this.db.then(db => db.close())
+				this.db = undefined
+				SQLiteRepo.instances[this.name] = undefined // remove from sharable instances
+			}
+		} else { // not shared so can safely close
+			this.db.then(db => db.close())
+			this.db = undefined
 		}
-		this.db = await sqlite.open(dbName)
-		const sql = fs.readFileSync('./sql/init_db.sql', 'utf8')
-		await this.db.run(sql)
 	}
+
+	// ===================================================USER TABLE===================================================
 
 	/**
 	 * Get a user from the database based on their username
 	 * @param userName {string} the name to search for
 	 * @returns {Promise<undefined | User>} a promise that resolves with the user, or undefined if the user is not found
 	 */
-	getUserByName(userName) {
-		return this.db.get('SELECT userName, email, cryptoPass FROM users WHERE userName = ?;', userName)
-			.then((row) => row && new User(row.userName, row.email, row.cryptoPass))
+	async getUserByName(userName) {
+		const db = await this.db
+		const row = await db.get('SELECT userName, email, cryptoPass FROM users WHERE userName = ?;', userName)
+		return row === undefined ? undefined : new User(row.userName, row.email, row.cryptoPass)
 	}
 
 	/**
@@ -56,9 +85,10 @@ export class SQLiteRepo {
 	 * @param email {string} the email to search for
 	 * @returns {Promise<undefined | User>} a promise that resolves with the user, or undefined if the user is not found
 	 */
-	getUserByEmail(email) {
-		return this.db.get('SELECT userName, email, cryptoPass FROM users WHERE email = ?;', email)
-			.then((row) => row && new User(row.userName, row.email, row.cryptoPass))
+	async getUserByEmail(email) {
+		const db = await this.db
+		const row = await db.get('SELECT userName, email, cryptoPass FROM users WHERE email = ?;', email)
+		return row === undefined ? row : new User(row.userName, row.email, row.cryptoPass)
 	}
 
 	/**
@@ -67,22 +97,20 @@ export class SQLiteRepo {
 	 * @returns {Promise<undefined | string>} A promise that resolves as undefined if the user was added successfully or
 	 * as an error message if something went wrong.
 	 */
-	insertNewUser(user) {
-		return this.db.run(
-			'INSERT INTO users(userName, email, cryptoPass) VALUES ($userName, $email, $cryptoPass);',
-			{$userName: user.userName, $email: user.email, $cryptoPass: user.cryptoPass}
-		)
-			.then(() => undefined)
-			.catch(err => {
-				if (err.message.includes('email')) {
-					return errors.EMAIL_EXISTS
-				} else if (err.message.includes('userName')) {
-					return errors.USERNAME_EXISTS
-				} else {
-					console.log(`ERROR CREATING NEW USER: ${err.message}\n`)
-					return errors.UNKNOWN_ERROR
-				}
-			})
+	async insertNewUser(user) {
+		const db = await this.db
+		try {
+			await db.run(
+				'INSERT INTO users(userName, email, cryptoPass) VALUES ($userName, $email, $cryptoPass);',
+				{
+					$userName: user.userName,
+					$email: user.email,
+					$cryptoPass: user.cryptoPass,
+				},
+			)
+		} catch (err) {
+			return getErrString(err)
+		}
 	}
 
 	/**
@@ -92,20 +120,19 @@ export class SQLiteRepo {
 	 * @returns {Promise<undefined | string>} a promise that resolves as undefined if successful or an error message if
 	 * something went wrong
 	 */
-	updateUserEmail(userName, email) {
-		return this.db.run(
-			'UPDATE users SET email = $email WHERE userName = $userName;',
-			{$userName: userName, $email: email}
-		)
-			.then(() => undefined)
-			.catch(err => {
-				if (err.message.includes('email')) {
-					return errors.EMAIL_EXISTS
-				} else {
-					console.log(`ERROR CHANGING USER EMAIL: ${err.message}\n`)
-					return errors.UNKNOWN_ERROR
-				}
-			})
+	async updateUserEmail(userName, email) {
+		const db = await this.db
+		try {
+			await db.run(
+				'UPDATE users SET email = $email WHERE userName = $userName;',
+				{
+					$userName: userName,
+					$email: email,
+				},
+			)
+		} catch (err) {
+			return getErrString(err)
+		}
 	}
 
 	/**
@@ -115,24 +142,20 @@ export class SQLiteRepo {
 	 * @returns {Promise<undefined | string>} a promise that resolves as undefined if successful or an error message if
 	 * something went wrong
 	 */
-	updateUserPass(userName, cryptoPass) {
-		return this.db.run(
-			'UPDATE users SET cryptoPass = $cryptoPass WHERE userName = $userName;',
-			{
-				$userName: userName,
-				$cryptoPass: cryptoPass
-			}
-		)
-			.then(() => undefined)
-			.catch(err => {
-				console.log(`ERROR CHANGING USER PASSWORD: ${err.message}\n`)
-				return errors.UNKNOWN_ERROR
-			})
+	async updateUserPass(userName, cryptoPass) {
+		const db = await this.db
+		try {
+			db.run('UPDATE users SET cryptoPass = $cryptoPass WHERE userName = $userName;',
+				{
+					$userName: userName,
+					$cryptoPass: cryptoPass,
+				},
+			)
+		} catch (err) {
+			return getErrString(err)
+		}
 	}
 
-	/** close the database handle */
-	close() {
-		this.db.close()
-		this.db = undefined
-	}
 }
+
+SQLiteRepo.instances = {}

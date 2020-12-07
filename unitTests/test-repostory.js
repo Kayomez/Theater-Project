@@ -3,7 +3,7 @@ import {SQLiteRepo, User, errors} from '../modules/repository-sqlite.js'
 
 test('DATABASE: User returned if username exists', async test => {
 	test.plan(2)
-	const rp = await SQLiteRepo.open()
+	const rp = new SQLiteRepo()
 	const userIn = new User('user1', 'email1@example.com', '0123456789')
 	try {
 		const message = await rp.insertNewUser(userIn)
@@ -21,7 +21,7 @@ test('DATABASE: User returned if username exists', async test => {
 test('DATABASE: undefined returned if username does not exist', async test => {
 	test.plan(2)
 
-	const rp = await SQLiteRepo.open()
+	const rp = new SQLiteRepo()
 	const userIn = new User('user1', 'email1@example.com', '0123456789')
 	try {
 		const message = await rp.insertNewUser(userIn)
@@ -39,7 +39,7 @@ test('DATABASE: undefined returned if username does not exist', async test => {
 test('DATABASE: message returned if duplicate username', async test => {
 	test.plan(2)
 
-	const rp = await SQLiteRepo.open()
+	const rp = new SQLiteRepo()
 	const user1 = new User('user1', 'email1@example.com', '0123456789')
 	let message = await rp.insertNewUser(user1)
 	test.is(message, undefined, 'an error message was returned')
@@ -51,7 +51,7 @@ test('DATABASE: message returned if duplicate username', async test => {
 
 test('DATABASE: user returned if email exists', async test => {
 	test.plan(2)
-	const rp = await SQLiteRepo.open()
+	const rp = new SQLiteRepo()
 	const userIn = new User('user1', 'email1@example.com', '0123456789')
 	try {
 		const message = await rp.insertNewUser(userIn)
@@ -69,7 +69,7 @@ test('DATABASE: user returned if email exists', async test => {
 test('DATABASE: undefined returned if email does not exist', async test => {
 	test.plan(2)
 
-	const rp = await SQLiteRepo.open()
+	const rp = new SQLiteRepo()
 	const userIn = new User('user1', 'email1@example.com', '0123456789')
 	try {
 		const message = await rp.insertNewUser(userIn)
@@ -87,7 +87,7 @@ test('DATABASE: undefined returned if email does not exist', async test => {
 test('DATABASE: message returned if duplicate email', async test => {
 	test.plan(2)
 
-	const rp = await SQLiteRepo.open()
+	const rp = new SQLiteRepo()
 	const user1 = new User('user1', 'email1@example.com', '0123456789')
 	let message = await rp.insertNewUser(user1)
 	test.is(message, undefined, 'an error message was returned')
@@ -100,7 +100,7 @@ test('DATABASE: message returned if duplicate email', async test => {
 test('DATABASE: message returned if changed to duplicate email', async test => {
 	test.plan(3)
 
-	const rp = await SQLiteRepo.open()
+	const rp = new SQLiteRepo()
 	const user1 = new User('user1', 'email1@example.com', '0123456789')
 	let message = await rp.insertNewUser(user1)
 	test.is(message, undefined, 'an error message was returned')
@@ -115,7 +115,7 @@ test('DATABASE: message returned if changed to duplicate email', async test => {
 test('DATABASE: password changes properly', async test => {
 	test.plan(3)
 
-	const rp = await SQLiteRepo.open()
+	const rp = new SQLiteRepo()
 	const user = new User('user1', 'email1@example.com', '0123456789')
 	let message = await rp.insertNewUser(user)
 	test.is(message, undefined, 'an error message was returned')
